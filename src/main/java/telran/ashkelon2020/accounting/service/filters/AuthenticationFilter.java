@@ -33,8 +33,9 @@ public class AuthenticationFilter implements Filter {
 		HttpServletRequest request = (HttpServletRequest) req;
 		HttpServletResponse response = (HttpServletResponse) resp;
 		String path = request.getServletPath();
+		String method = request.getMethod();
 		String token = request.getHeader("Authorization");
-		if (!"/account/register".equalsIgnoreCase(path)) {
+		if (!checkPathAndMethod(path, method)) {
 			String sessionId = request.getSession().getId();
 			if (sessionId != null && token == null) {
 				String login = securityService.getUser(sessionId);
@@ -61,6 +62,13 @@ public class AuthenticationFilter implements Filter {
 		}
 
 		chain.doFilter(request, response);
+	}
+	
+	private boolean checkPathAndMethod(String path, String method) {
+		boolean res = "/account/register".equalsIgnoreCase(path);
+		res = res || (path.startsWith("/forum") && "GET".equalsIgnoreCase(method));
+		res = res || path.matches("/forum/posts/(tags|period)/?");		
+		return res;
 	}
 
 	private class WrapperRequest extends HttpServletRequestWrapper {

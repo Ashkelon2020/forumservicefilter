@@ -14,14 +14,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
-import telran.ashkelon2020.accounting.dto.exceptions.ForbiddenException;
-import telran.ashkelon2020.accounting.dto.exceptions.UserNotFoundException;
 import telran.ashkelon2020.accounting.service.security.AccountSecurity;
+import telran.ashkelon2020.forum.dao.PostRepository;
+import telran.ashkelon2020.forum.model.Post;
 
 @Service
-@Order(20)
-public class ExpDateFilter implements Filter {
-
+@Order(60)
+public class ValidateAuthorOrModeratorFilter implements Filter {
+	
+	@Autowired
+	PostRepository postRepository;
+	
 	@Autowired
 	AccountSecurity securityService;
 
@@ -33,31 +36,25 @@ public class ExpDateFilter implements Filter {
 		String path = request.getServletPath();
 		String method = request.getMethod();
 		if (checkPathAndMethod(path, method)) {
-			try {
-				securityService.checkExpDate(request.getUserPrincipal().getName());
-				boolean res = securityService.isBanned(request.getUserPrincipal().getName());
-				if (res) {
-					response.sendError(403, "user banned");
-					return;
-				}
-			} catch (ForbiddenException e) {
-				response.sendError(403);
+			String user = request.getUserPrincipal().getName();
+			String postId = path.split("/")[3];
+			Post post = postRepository.findById(postId).orElse(null);
+			if (post == null) {
+				response.sendError(404, "post id = " + postId + " not found");
 				return;
-			} catch (UserNotFoundException e) {
-				response.sendError(404);
+			}
+			String author = post.getAuthor();
+			if (!(user.equals(author) || securityService.checkHaveRole(user, "Moderator"))) {
+				response.sendError(403);
 				return;
 			}
 		}
 		chain.doFilter(request, response);
 	}
-
+	
 	private boolean checkPathAndMethod(String path, String method) {
-		boolean res = "/account/login".equalsIgnoreCase(path) && "Post".equalsIgnoreCase(method);
-		res = res || ("Put".equalsIgnoreCase(method) && path.matches("/account/user/\\w+/?"));
-		boolean forum = path.startsWith("/forum") 
-				&& (!"GET".equalsIgnoreCase(method))
-				&& (!path.matches("/forum/posts/(tags|period)/?"));
-		res = res || forum;	
+		boolean res = path.matches("/forum/post/\\w+/?")
+				&& ("PUT".equalsIgnoreCase(method) || ("DELETE".equalsIgnoreCase(method)));
 		return res;
 	}
 
