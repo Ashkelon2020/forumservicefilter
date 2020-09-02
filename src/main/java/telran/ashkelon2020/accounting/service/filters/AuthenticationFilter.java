@@ -66,8 +66,9 @@ public class AuthenticationFilter implements Filter {
 	
 	private boolean checkPathAndMethod(String path, String method) {
 		boolean res = "/account/register".equalsIgnoreCase(path);
-		res = res || (path.startsWith("/forum") && "GET".equalsIgnoreCase(method));
-		res = res || path.matches("/forum/posts/(tags|period)/?");		
+		//res = res || (path.startsWith("/forum") && "GET".equalsIgnoreCase(method));
+		res = res || "GET".equalsIgnoreCase(method);
+		res = res || path.matches("/forum/posts/(tags|period)/?");
 		return res;
 	}
 
